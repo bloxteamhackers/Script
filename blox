@@ -1,0 +1,149 @@
+--[[
+Universal Roblox Statue Hub
+Autor: bloxteamhackers
+Descrição: Hub universal para prender jogadores em estátuas (freeze), com interface de liga/desliga.
+Funciona em todos os jogos. O player preso continuará mesmo após resetar.
+ATENÇÃO: Use apenas para fins educacionais ou em ambientes próprios. O uso indevido pode resultar em banimento.
+]]
+
+-- Inicializando Interface
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
+
+-- Função para criar a GUI
+local function createHub()
+    -- Remover GUI antiga se existir
+    if game.CoreGui:FindFirstChild("StatueHub") then
+        game.CoreGui.StatueHub:Destroy()
+    end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "StatueHub"
+    ScreenGui.Parent = game:GetService("CoreGui")
+
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(0, 250, 0, 140)
+    Frame.Position = UDim2.new(0.5, -125, 0.2, 0)
+    Frame.BackgroundColor3 = Color3.new(0.11, 0.11, 0.11)
+    Frame.BorderSizePixel = 0
+    Frame.Parent = ScreenGui
+
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, 0, 0, 30)
+    Title.BackgroundTransparency = 1
+    Title.Text = "Universal Statue Hub"
+    Title.TextColor3 = Color3.new(1, 1, 1)
+    Title.Font = Enum.Font.SourceSansBold
+    Title.TextSize = 20
+    Title.Parent = Frame
+
+    -- Botão de ativar/desativar estátua
+    local statueOn = false
+    local Button = Instance.new("TextButton")
+    Button.Size = UDim2.new(1, -30, 0, 40)
+    Button.Position = UDim2.new(0, 15, 0, 45)
+    Button.BackgroundColor3 = Color3.fromRGB(42, 142, 255)
+    Button.Text = "Ativar Estátua"
+    Button.TextColor3 = Color3.new(1, 1, 1)
+    Button.Font = Enum.Font.SourceSansSemibold
+    Button.TextSize = 18
+    Button.Parent = Frame
+
+    -- Botão para fechar a GUI
+    local Close = Instance.new("TextButton")
+    Close.Size = UDim2.new(0, 30, 0, 30)
+    Close.Position = UDim2.new(1, -35, 0, 5)
+    Close.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+    Close.Text = "X"
+    Close.TextColor3 = Color3.new(1,1,1)
+    Close.Font = Enum.Font.SourceSansBold
+    Close.TextSize = 16
+    Close.Parent = Frame
+
+    Close.MouseButton1Click:Connect(function()
+        ScreenGui:Destroy()
+    end)
+
+    return Button, function(on)
+        Button.Text = on and "Desativar Estátua" or "Ativar Estátua"
+        Button.BackgroundColor3 = on and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(42, 142, 255)
+    end
+end
+
+-- Função para prender/desprender player
+local frozen = false
+local freezeConnection
+local function freezePlayer(enable)
+    frozen = enable
+    if freezeConnection then
+        freezeConnection:Disconnect()
+        freezeConnection = nil
+    end
+
+    local function freezeChar(char)
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Anchored = enable
+            end
+        end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.PlatformStand = enable
+            hum.WalkSpeed = enable and 0 or 16
+            hum.JumpPower = enable and 0 or 50
+        end
+    end
+
+    local function checkAndFreeze()
+        local character = LocalPlayer.Character
+        if character and character:FindFirstChild("HumanoidRootPart") then
+            freezeChar(character)
+        end
+    end
+
+    checkAndFreeze()
+
+    if enable then
+        freezeConnection = LocalPlayer.CharacterAdded:Connect(function(char)
+            -- Espera carregar partes
+            char:WaitForChild("HumanoidRootPart", 5)
+            wait(0.1)
+            freezeChar(char)
+        end)
+        -- Congela se morrer/resetar
+        local character = LocalPlayer.Character
+        if character then
+            local hum = character:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum.Died:Connect(function()
+                    wait(0.5)
+                    checkAndFreeze()
+                end)
+            end
+        end
+    end
+end
+
+-- Montando Hub
+local Button, setButtonState = createHub()
+
+Button.MouseButton1Click:Connect(function()
+    frozen = not frozen
+    freezePlayer(frozen)
+    setButtonState(frozen)
+end)
+
+-- Auto freeze se já estava ligado
+if frozen then
+    freezePlayer(true)
+    setButtonState(true)
+end
+
+-- Mensagem de ativação
+StarterGui:SetCore("SendNotification", {
+    Title = "Statue Hub",
+    Text = "Hub carregado com sucesso!",
+    Duration = 3
+})
