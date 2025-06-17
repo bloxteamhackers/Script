@@ -1,149 +1,163 @@
---[[
-Universal Roblox Statue Hub
-Autor: bloxteamhackers
-Descrição: Hub universal para prender jogadores em estátuas (freeze), com interface de liga/desliga.
-Funciona em todos os jogos. O player preso continuará mesmo após resetar.
-ATENÇÃO: Use apenas para fins educacionais ou em ambientes próprios. O uso indevido pode resultar em banimento.
-]]
+local MainGui = Instance.new("ScreenGui", CoreGui)
 
--- Inicializando Interface
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local RunService = game:GetService("RunService")
-local StarterGui = game:GetService("StarterGui")
+MainGui.Name = "BrainrotExploitGUI"
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 220, 0, 220)
+Frame.Position = UDim2.new(0.5, -110, 0.5, -110)
+Frame.BackgroundColor3 = Color3.fromRGB(15,15,15)
+Frame.BorderSizePixel = 0
+Frame.Parent = MainGui
 
--- Função para criar a GUI
-local function createHub()
-    -- Remover GUI antiga se existir
-    if game.CoreGui:FindFirstChild("StatueHub") then
-        game.CoreGui.StatueHub:Destroy()
-    end
+local UICorner = Instance.new("UICorner", Frame)
+UICorner.CornerRadius = UDim.new(0, 16)
 
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "StatueHub"
-    ScreenGui.Parent = game:GetService("CoreGui")
+local UIListLayout = Instance.new("UIListLayout", Frame)
+UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+UIListLayout.Padding = UDim.new(0, 15)
 
-    local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(0, 250, 0, 140)
-    Frame.Position = UDim2.new(0.5, -125, 0.2, 0)
-    Frame.BackgroundColor3 = Color3.new(0.11, 0.11, 0.11)
-    Frame.BorderSizePixel = 0
-    Frame.Parent = ScreenGui
+local buttonNames = {"Auto Steal", "Instant Take", "Skywalk"}
+local buttons = {}
+for _, name in ipairs(buttonNames) do
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0, 170, 0, 40)
+    button.BackgroundColor3 = Color3.fromRGB(45,45,45)
+    button.Text = name
+    button.TextColor3 = Color3.fromRGB(220,220,220)
+    button.Font = Enum.Font.GothamBold
+    button.TextSize = 22
+    button.Parent = Frame
+    button.AutoButtonColor = true
 
-    local Title = Instance.new("TextLabel")
-    Title.Size = UDim2.new(1, 0, 0, 30)
-    Title.BackgroundTransparency = 1
-    Title.Text = "Universal Statue Hub"
-    Title.TextColor3 = Color3.new(1, 1, 1)
-    Title.Font = Enum.Font.SourceSansBold
-    Title.TextSize = 20
-    Title.Parent = Frame
+    local btnCorner = Instance.new("UICorner", button)
+    btnCorner.CornerRadius = UDim.new(0, 12)
 
-    -- Botão de ativar/desativar estátua
-    local statueOn = false
-    local Button = Instance.new("TextButton")
-    Button.Size = UDim2.new(1, -30, 0, 40)
-    Button.Position = UDim2.new(0, 15, 0, 45)
-    Button.BackgroundColor3 = Color3.fromRGB(42, 142, 255)
-    Button.Text = "Ativar Estátua"
-    Button.TextColor3 = Color3.new(1, 1, 1)
-    Button.Font = Enum.Font.SourceSansSemibold
-    Button.TextSize = 18
-    Button.Parent = Frame
-
-    -- Botão para fechar a GUI
-    local Close = Instance.new("TextButton")
-    Close.Size = UDim2.new(0, 30, 0, 30)
-    Close.Position = UDim2.new(1, -35, 0, 5)
-    Close.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
-    Close.Text = "X"
-    Close.TextColor3 = Color3.new(1,1,1)
-    Close.Font = Enum.Font.SourceSansBold
-    Close.TextSize = 16
-    Close.Parent = Frame
-
-    Close.MouseButton1Click:Connect(function()
-        ScreenGui:Destroy()
-    end)
-
-    return Button, function(on)
-        Button.Text = on and "Desativar Estátua" or "Ativar Estátua"
-        Button.BackgroundColor3 = on and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(42, 142, 255)
-    end
+    buttons[name] = button
 end
 
--- Função para prender/desprender player
-local frozen = false
-local freezeConnection
-local function freezePlayer(enable)
-    frozen = enable
-    if freezeConnection then
-        freezeConnection:Disconnect()
-        freezeConnection = nil
-    end
+-- Drag GUI
+local UserInputService = game:GetService("UserInputService")
+local dragging = false
+local dragInput, dragStart, startPos
 
-    local function freezeChar(char)
-        for _, part in pairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.Anchored = enable
+Frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = Frame.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
             end
-        end
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum.PlatformStand = enable
-            hum.WalkSpeed = enable and 0 or 16
-            hum.JumpPower = enable and 0 or 50
-        end
-    end
-
-    local function checkAndFreeze()
-        local character = LocalPlayer.Character
-        if character and character:FindFirstChild("HumanoidRootPart") then
-            freezeChar(character)
-        end
-    end
-
-    checkAndFreeze()
-
-    if enable then
-        freezeConnection = LocalPlayer.CharacterAdded:Connect(function(char)
-            -- Espera carregar partes
-            char:WaitForChild("HumanoidRootPart", 5)
-            wait(0.1)
-            freezeChar(char)
         end)
-        -- Congela se morrer/resetar
-        local character = LocalPlayer.Character
-        if character then
-            local hum = character:FindFirstChildOfClass("Humanoid")
-            if hum then
-                hum.Died:Connect(function()
-                    wait(0.5)
-                    checkAndFreeze()
-                end)
-            end
-        end
     end
-end
-
--- Montando Hub
-local Button, setButtonState = createHub()
-
-Button.MouseButton1Click:Connect(function()
-    frozen = not frozen
-    freezePlayer(frozen)
-    setButtonState(frozen)
+end)
+Frame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
 end)
 
--- Auto freeze se já estava ligado
-if frozen then
-    freezePlayer(true)
-    setButtonState(true)
+local function openClickStealGUI()
+    pcall(function() CoreGui["ClickStealGUI"]:Destroy() end)
+    local ClickGui = Instance.new("ScreenGui", CoreGui)
+    ClickGui.Name = "ClickStealGUI"
+
+    local ClickFrame = Instance.new("Frame")
+    ClickFrame.Size = UDim2.new(0, 220, 0, 120)
+    ClickFrame.Position = UDim2.new(0.5, -110, 0.5, -60)
+    ClickFrame.BackgroundColor3 = Color3.fromRGB(15,15,15)
+    ClickFrame.BorderSizePixel = 0
+    ClickFrame.Parent = ClickGui
+
+    local ClickUiCorner = Instance.new("UICorner", ClickFrame)
+    ClickUiCorner.CornerRadius = UDim.new(0, 16)
+
+    local ClickButton = Instance.new("TextButton")
+    ClickButton.Size = UDim2.new(0, 170, 0, 40)
+    ClickButton.Position = UDim2.new(0.5, -85, 0.5, -20)
+    ClickButton.BackgroundColor3 = Color3.fromRGB(45,45,45)
+    ClickButton.Text = "Click Steal"
+    ClickButton.TextColor3 = Color3.fromRGB(220,220,220)
+    ClickButton.Font = Enum.Font.GothamBold
+    ClickButton.TextSize = 22
+    ClickButton.Parent = ClickFrame
+    ClickButton.AutoButtonColor = true
+
+    local btnCorner = Instance.new("UICorner", ClickButton)
+    btnCorner.CornerRadius = UDim.new(0, 12)
+
+    ClickButton.MouseButton1Click:Connect(function()
+        local base = workspace:FindFirstChild("Bases") and workspace.Bases:FindFirstChild(LocalPlayer.Name)
+        if not base then
+            game.StarterGui:SetCore("SendNotification", {
+                Title = "Erro";
+                Text = "Sua base não foi encontrada!";
+                Duration = 2;
+            })
+            return
+        end
+
+        local found = false
+
+        local locations = {}
+        if LocalPlayer.Character then
+            table.insert(locations, LocalPlayer.Character)
+        end
+        table.insert(locations, LocalPlayer.Backpack)
+
+        for _, container in ipairs(locations) do
+            for _, tool in ipairs(container:GetChildren()) do
+                if tool:IsA("Tool") and isBrainrot(tool) then
+                    found = true
+                    -- Teleporta você pra sua base
+                    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                        LocalPlayer.Character.HumanoidRootPart.CFrame = base.CFrame + Vector3.new(0,6,0)
+                    end
+                    -- Garante que o brainrot está na sua mochila
+                    tool.Parent = LocalPlayer.Backpack
+                end
+            end
+        end
+
+        if found then
+            game.StarterGui:SetCore("SendNotification", {
+                Title = "Click Steal";
+                Text = "Seus brainrots foram enviados pra sua base!";
+                Duration = 2;
+            })
+        else
+            game.StarterGui:SetCore("SendNotification", {
+                Title = "Aviso";
+                Text = "Pegue um brainrot primeiro!";
+                Duration = 2;
+            })
+        end
+    end)
 end
 
--- Mensagem de ativação
-StarterGui:SetCore("SendNotification", {
-    Title = "Statue Hub",
-    Text = "Hub carregado com sucesso!",
-    Duration = 3
-})
+buttons["Auto Steal"].MouseButton1Click:Connect(function()
+    openClickStealGUI()
+end)
+
+buttons["Instant Take"].MouseButton1Click:Connect(function()
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "Instant Take";
+        Text = "Função ativada!";
+        Duration = 2;
+    })
+end)
+buttons["Skywalk"].MouseButton1Click:Connect(function()
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "Skywalk";
+        Text = "Função ativada!";
+        Duration = 2;
+    })
+end)
